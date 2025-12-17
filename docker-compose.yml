@@ -4,16 +4,16 @@ services:
     image: mysql:8.0
     container_name: product-db
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_USER: ${DB_USERNAME}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
       - mysql-data:/var/lib/mysql
     networks:
-      - compose-network
+      - app-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,15 +27,17 @@ services:
       dockerfile: Dockerfile
     container_name: product-api
     ports:
-      - "8080:8080"
+      - "${API_PORT}:8080"
     environment:
-      DB_URL: jdbc:mysql://db:3306/${DB_NAME}?createDatabaseIfNotExist=true
-      DB_USERNAME: ${DB_USERNAME}
-      DB_PASSWORD: ${DB_PASSWORD}
       SPRING_APPLICATION_NAME: product-api
-      SERVER_PORT: 8080
+      SERVER_PORT: ${API_PORT}
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:${MYSQL_PORT}/${MYSQL_DATABASE}?createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
     networks:
-      - compose-network
+      - app-network
     depends_on:
       db:
         condition: service_healthy
@@ -54,16 +56,17 @@ services:
       dockerfile: Dockerfile
     container_name: order-api
     ports:
-      - "8081:8081"
+      - "${ORDER_API_PORT}:8081"
     environment:
-      DB_URL: jdbc:mysql://db:3306/${DB_NAME}?createDatabaseIfNotExist=true
-      DB_USERNAME: ${DB_USERNAME}
-      DB_PASSWORD: ${DB_PASSWORD}
       SPRING_APPLICATION_NAME: order-api
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:${MYSQL_PORT}/${MYSQL_DATABASE}?createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
       SERVER_PORT: 8081
       PRODUCT_API_URL: http://product-api:8080
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
     networks:
-      - compose-network
+      - app-network
     depends_on:
       db:
         condition: service_healthy
@@ -72,7 +75,7 @@ services:
     restart: unless-stopped
 
 networks:
-  compose-network:
+  app-network:
     driver: bridge
 
 volumes:
